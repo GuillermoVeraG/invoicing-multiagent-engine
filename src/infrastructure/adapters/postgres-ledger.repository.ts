@@ -1,6 +1,10 @@
 import pg from "pg";
 const { Pool } = pg;
 import { Invoice } from "../../domain/entities/invoice.entity.js";
+import {
+  DatabaseConnectionError,
+  DatabasePersistenceError,
+} from "../errors/infrastructure-error.js";
 
 export interface UnbalancedInvoiceDiscrepancy {
   readonly invoiceId: string;
@@ -46,13 +50,16 @@ export class PostgresLedgerRepository {
    * Registra una factura y sus asientos de partida doble dentro de una transacción ACID.
    */
   public async recordInvoice(invoice: Invoice): Promise<void> {
-    const client = await this.pool.connect();
+    let client: pg.PoolClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw new DatabaseConnectionError("PostgreSQL Invoicing Ledger", error);
+    }
 
     try {
-      // 1. INICIAR TRANSACCIÓN ATÓMICA
       await client.query("BEGIN");
 
-      // 2. Insertar cabecera en el Ledger
       const insertLedgerQuery = `
         INSERT INTO invoices_ledger (
           invoice_id, customer_tax_id, subtotal_amount, tax_amount, total_amount, currency, status, issued_at
@@ -72,10 +79,6 @@ export class PostgresLedgerRepository {
         invoice.createdAt,
       ]);
 
-      // 3. Generar líneas de Partida Doble (Double-Entry Bookkeeping)
-      // Línea A: Cuentas por Cobrar (Débito al activo por el total)
-      // Línea B: Ingresos por Venta (Crédito a ingresos por el subtotal)
-      // Línea C: Impuesto por Pagar (Crédito al pasivo fiscal por el impuesto)
       const insertEntryQuery = `
         INSERT INTO journal_entries (
           invoice_id, account_code, account_name, debit_amount, credit_amount
@@ -111,12 +114,13 @@ export class PostgresLedgerRepository {
         ]);
       }
 
-      // 4. CONFIRMAR TRANSACCIÓN
       await client.query("COMMIT");
     } catch (error) {
-      // 5. ROLLBACK ANTE CUALQUIER FALLO (Consistencia garantizada)
       await client.query("ROLLBACK");
-      throw error;
+      throw new DatabasePersistenceError(
+        `Registrar factura ${invoice.id} y partida doble en PostgreSQL`,
+        error,
+      );
     } finally {
       client.release();
     }
@@ -151,12 +155,19 @@ export class PostgresLedgerRepository {
       GROUP BY i.invoice_id, i.customer_tax_id, i.total_amount, i.status;
     `;
 
-    const result = await this.pool.query(query, [invoiceId]);
-    if (result.rows.length === 0) {
-      return null;
-    }
+    try {
+      const result = await this.pool.query(query, [invoiceId]);
+      if (result.rows.length === 0) {
+        return null;
+      }
 
-    return result.rows[0] as LedgerEntryDetail;
+      return result.rows[0] as LedgerEntryDetail;
+    } catch (error) {
+      throw new DatabasePersistenceError(
+        `Consultar factura ${invoiceId} y partida doble en PostgreSQL`,
+        error,
+      );
+    }
   }
 
   /**
@@ -177,8 +188,15 @@ export class PostgresLedgerRepository {
       WHERE discrepancy > 0; 
     `;
 
-    const result = await this.pool.query(query);
-    return result.rows as Array<UnbalancedInvoiceDiscrepancy>;
+    try {
+      const result = await this.pool.query(query);
+      return result.rows as Array<UnbalancedInvoiceDiscrepancy>;
+    } catch (error) {
+      throw new DatabasePersistenceError(
+        `Consultar facturas con discrepancias contables en PostgreSQL`,
+        error,
+      );
+    }
   }
 
   /**

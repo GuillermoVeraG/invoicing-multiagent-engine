@@ -12,6 +12,10 @@ import {
 import { IInvoiceRepository } from "../../domain/ports/invoice-repository.port.js";
 import { Money } from "../../domain/value-objects/money.vo.js";
 import { TaxId } from "../../domain/value-objects/tax-id.vo.js";
+import {
+  DatabaseDataCorruptionError,
+  DatabasePersistenceError,
+} from "../errors/infrastructure-error.js";
 
 /**
  * Esquema persistido en la tabla DynamoDB (Single-Table Design).
@@ -89,27 +93,42 @@ export class DynamoDbInvoiceRepository implements IInvoiceRepository {
       createdAt: invoice.createdAt.toISOString(),
     };
 
-    await this.docClient.send(
-      new PutCommand({
-        TableName: this.tableName,
-        Item: item,
-      }),
-    );
+    try {
+      await this.docClient.send(
+        new PutCommand({
+          TableName: this.tableName,
+          Item: item,
+        }),
+      );
+    } catch (error) {
+      throw new DatabasePersistenceError(
+        `Guardar factura ${invoice.id} en tabla "${this.tableName}"`,
+        error,
+      );
+    }
   }
 
   /**
    * Recupera una factura por su ID y la reconstituye en una entidad de dominio rica.
    */
   public async findById(id: string): Promise<Invoice | null> {
-    const response = await this.docClient.send(
-      new GetCommand({
-        TableName: this.tableName,
-        Key: {
-          PK: `INVOICE#${id}`,
-          SK: "METADATA",
-        },
-      }),
-    );
+    let response;
+    try {
+      response = await this.docClient.send(
+        new GetCommand({
+          TableName: this.tableName,
+          Key: {
+            PK: `INVOICE#${id}`,
+            SK: "METADATA",
+          },
+        }),
+      );
+    } catch (error) {
+      throw new DatabasePersistenceError(
+        `Consultar factura ${id} en tabla "${this.tableName}"`,
+        error,
+      );
+    }
 
     if (!response.Item) {
       return null;
@@ -120,8 +139,8 @@ export class DynamoDbInvoiceRepository implements IInvoiceRepository {
     // 1. Rehidratar Value Objects con validación
     const taxIdResult = TaxId.create(raw.customerTaxId);
     if (!taxIdResult.success) {
-      throw new Error(
-        `Datos corruptos en DynamoDB para TaxId: ${raw.customerTaxId}`,
+      throw new DatabaseDataCorruptionError(
+        `CustomerTaxId inválido en factura ${raw.id}: "${raw.customerTaxId}"`,
       );
     }
 
@@ -133,7 +152,7 @@ export class DynamoDbInvoiceRepository implements IInvoiceRepository {
     const totalResult = Money.create(raw.total.amount, raw.total.currency);
 
     if (!subtotalResult.success || !taxResult.success || !totalResult.success) {
-      throw new Error(
+      throw new DatabaseDataCorruptionError(
         `Datos corruptos de montos en DynamoDB para factura: ${raw.id}`,
       );
     }
@@ -146,7 +165,9 @@ export class DynamoDbInvoiceRepository implements IInvoiceRepository {
         item.unitPrice.currency,
       );
       if (!priceResult.success) {
-        throw new Error(`Precio corrupto en DynamoDB para SKU: ${item.sku}`);
+        throw new DatabaseDataCorruptionError(
+          `Precio corrupto en DynamoDB para SKU: ${item.sku}`,
+        );
       }
       domainItems.push({
         sku: item.sku,
