@@ -1,4 +1,5 @@
 import { Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
+import * as kinesis from "aws-cdk-lib/aws-kinesis";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as sqs from "aws-cdk-lib/aws-sqs";
@@ -25,6 +26,11 @@ export class MessagingStack extends Stack {
    */
   public readonly accountingAuditQueue: sqs.Queue;
   public readonly accountingAuditDlq: sqs.Queue;
+
+  /**
+   * Stream de Kinesis para telemetría inmutable de auditoría contable en tiempo real.
+   */
+  public readonly auditStream: kinesis.Stream;
 
   constructor(scope: Construct, id: string, props?: MessagingStackProps) {
     super(scope, id, props);
@@ -93,5 +99,16 @@ export class MessagingStack extends Stack {
         rawMessageDelivery: false,
       }),
     );
+
+    // -------------------------------------------------------------------------
+    // 4. Amazon Kinesis Data Stream: Telemetría de Auditoría Fiscal Continua
+    // -------------------------------------------------------------------------
+    this.auditStream = new kinesis.Stream(this, "InvoicingAuditStream", {
+      streamName: `invoicing-audit-stream-${stage}`,
+      shardCount: 1,
+      retentionPeriod: Duration.days(7),
+      encryption: kinesis.StreamEncryption.MANAGED,
+      removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    });
   }
 }

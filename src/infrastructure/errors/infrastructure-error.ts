@@ -54,3 +54,13 @@ export class DatabaseConnectionError extends InfrastructureError {
     );
   }
 }
+
+export class StreamPublishingError extends InfrastructureError {
+  public readonly code = "STREAM_PUBLISHING_FAILED";
+  constructor(streamName: string, originalError?: unknown) {
+    super(
+      `Fallo técnico al transmitir registro hacia Kinesis Stream "${streamName}".`,
+      originalError,
+    );
+  }
+}
