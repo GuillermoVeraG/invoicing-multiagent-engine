@@ -1,0 +1,38 @@
+{
+  "name": "invoicing-service",
+  "version": "1.0.0",
+  "description": "Transactional invoicing and multi-agent accounting engine",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "clean-architecture",
+    "hexagonal-architecture",
+    "typescript",
+    "serverless",
+    "ddd"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "aws-cdk": "^2.1145.0",
+    "aws-cdk-lib": "^2.273.0",
+    "constructs": "^10.8.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1153.0",
+    "@aws-sdk/lib-dynamodb": "^3.1153.0",
+    "pg": "^8.23.1"
+  }
+}

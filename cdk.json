@@ -1,0 +1,16 @@
+{
+  "app": "npx tsx infra/bin/app.ts",
+  "watch": {
+    "include": ["infra/**"],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package*.json",
+      "node_modules"
+    ]
+  },
+  "context": {}
+}
