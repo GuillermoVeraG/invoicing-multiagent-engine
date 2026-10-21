@@ -3,6 +3,10 @@ import { z } from "zod";
 import { CreateInvoiceUseCase } from "../../application/use-cases/create-invoice.use-case.js";
 import { DynamoDbInvoiceRepository } from "../adapters/dynamodb-invoice.repository.js";
 import { SnsEventPublisher } from "../adapters/sns-event.publisher.js";
+import {
+  buildSecureResponse,
+  owaspSecurityHeaders,
+} from "../security/security-headers.js";
 
 // -----------------------------------------------------------------------------
 // 1. Esquema de Validación en Runtime con Zod
@@ -44,12 +48,6 @@ const invoiceRepo = new DynamoDbInvoiceRepository({ tableName });
 const eventPublisher = new SnsEventPublisher({ topicArn });
 const useCase = new CreateInvoiceUseCase(invoiceRepo, eventPublisher);
 
-const defaultHeaders = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
 // -----------------------------------------------------------------------------
 // 3. Handler de AWS Lambda
 // -----------------------------------------------------------------------------
@@ -60,21 +58,17 @@ export const handler = async (
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 204,
-      headers: defaultHeaders,
+      headers: owaspSecurityHeaders,
       body: "",
     };
   }
 
   // 1. Validar presencia del cuerpo HTTP
   if (!event.body) {
-    return {
-      statusCode: 400,
-      headers: defaultHeaders,
-      body: JSON.stringify({
-        error: "BAD_REQUEST",
-        message: "El cuerpo de la petición no puede estar vacío.",
-      }),
-    };
+    return buildSecureResponse(400, {
+      error: "BAD_REQUEST",
+      message: "El cuerpo de la petición no puede estar vacío.",
+    });
   }
 
   // 2. Parseo y Validación en Runtime con Zod
@@ -82,26 +76,18 @@ export const handler = async (
   try {
     rawJson = JSON.parse(event.body);
   } catch {
-    return {
-      statusCode: 400,
-      headers: defaultHeaders,
-      body: JSON.stringify({
-        error: "INVALID_JSON",
-        message: "El cuerpo de la petición no es un JSON válido.",
-      }),
-    };
+    return buildSecureResponse(400, {
+      error: "INVALID_JSON",
+      message: "El cuerpo de la petición no es un JSON válido.",
+    });
   }
 
   const validationResult = createInvoiceSchema.safeParse(rawJson);
   if (!validationResult.success) {
-    return {
-      statusCode: 422,
-      headers: defaultHeaders,
-      body: JSON.stringify({
-        error: "VALIDATION_FAILED",
-        details: validationResult.error.format(),
-      }),
-    };
+    return buildSecureResponse(422, {
+      error: "VALIDATION_FAILED",
+      message: validationResult.error.format(),
+    });
   }
 
   // 3. Ejecución del Caso de Uso Hexagonal
@@ -117,35 +103,23 @@ export const handler = async (
       const error = result.error;
       const statusCode = error.code === "INVOICE_NOT_FOUND" ? 404 : 400;
 
-      return {
-        statusCode,
-        headers: defaultHeaders,
-        body: JSON.stringify({
-          error: error.code,
-          message: error.message,
-        }),
-      };
+      return buildSecureResponse(statusCode, {
+        error: error.code,
+        message: error.message,
+      });
     }
 
     // 4. Respuesta Exitosa 201 Created
-    return {
-      statusCode: 201,
-      headers: defaultHeaders,
-      body: JSON.stringify({
-        message: "Factura emitida exitosamente",
-        data: result.value,
-      }),
-    };
+    return buildSecureResponse(201, {
+      message: "Factura emitida exitosamente",
+      data: result.value,
+    });
   } catch (error) {
     // 5. Fallos no controlados de infraestructura (500)
-    return {
-      statusCode: 500,
-      headers: defaultHeaders,
-      body: JSON.stringify({
-        error: "INTERNAL_SERVER_ERROR",
-        message:
-          error instanceof Error ? error.message : "Error interno desconocido.",
-      }),
-    };
+    return buildSecureResponse(500, {
+      error: "INTERNAL_SERVER_ERROR",
+      message:
+        error instanceof Error ? error.message : "Error interno desconocido.",
+    });
   }
 };

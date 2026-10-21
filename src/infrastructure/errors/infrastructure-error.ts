@@ -74,3 +74,13 @@ export class StorageOperationError extends InfrastructureError {
     );
   }
 }
+
+export class SecretRetrievalError extends InfrastructureError {
+  public readonly code = "SECRET_RETRIEVAL_FAILED";
+  constructor(secretId: string, originalError?: unknown) {
+    super(
+      `Fallo técnico al recuperar el secreto "${secretId}" desde Secrets Manager.`,
+      originalError,
+    );
+  }
+}
