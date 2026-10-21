@@ -46,7 +46,7 @@ export class ComputeStack extends Stack {
       "CreateInvoiceFunction",
       {
         functionName: `invoicing-core-${stage}`,
-        runtime: lambda.Runtime.NODEJS_20_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         handler: "index.handler",
         // Apunta al directorio compilado de la aplicación
         code: lambda.Code.fromAsset("dist"),
@@ -73,7 +73,7 @@ export class ComputeStack extends Stack {
       "StockWorkerFunction",
       {
         functionName: `stock-sync-worker-${stage}`,
-        runtime: lambda.Runtime.NODEJS_20_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         handler: "index.stockHandler",
         code: lambda.Code.fromAsset("dist"),
         memorySize: 256,
@@ -104,7 +104,7 @@ export class ComputeStack extends Stack {
       "AuditAgentWorkerFunction",
       {
         functionName: `audit-agent-worker-${stage}`,
-        runtime: lambda.Runtime.NODEJS_20_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         handler: "index.auditHandler",
         code: lambda.Code.fromAsset("dist"),
         memorySize: 1024, // Mayor memoria (más vCPU) para llamadas a LLM y OpenTelemetry
