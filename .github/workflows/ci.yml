@@ -1,0 +1,44 @@
+name: Invoicing Multi-Agent Engine
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Build, Test & Validate Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # Validación estricta de tipos TypeScript
+      - name: Typecheck Application Code
+        run: npm run typecheck
+
+      # Ejecución de la suite completa de pruebas con Vitest
+      - name: Run Unit Tests
+        run: npm run test:unit
+
+      # Compilación
+      - name: Build Application
+        run: npm run build
+
+      # Síntesis de Infraestructura como Código (AWS CDK)
+      - name: Validate AWS CDK Infrastructure (Synth)
+        run: npx cdk synth
+        env:
+          CDK_DEFAULT_ACCOUNT: "123456789012"
+          CDK_DEFAULT_REGION: "us-east-1"

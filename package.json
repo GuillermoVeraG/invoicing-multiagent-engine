@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
     "test:watch": "vitest"
   },
   "keywords": [
@@ -18,7 +19,7 @@
     "serverless",
     "ddd"
   ],
-  "author": "",
+  "author": "Guillermo Vera",
   "license": "ISC",
   "devDependencies": {
     "@types/aws-lambda": "^8.10.164",
