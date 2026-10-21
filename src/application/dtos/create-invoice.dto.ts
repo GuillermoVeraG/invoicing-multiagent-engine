@@ -9,8 +9,8 @@ export interface CreateInvoiceItemDto {
 export interface CreateInvoiceDto {
   readonly customerTaxId: string;
   readonly items: ReadonlyArray<CreateInvoiceItemDto>;
-  readonly taxRegime?: TaxRegime;
-  readonly taxRatePercentage?: number;
+  readonly taxRegime?: TaxRegime | undefined;
+  readonly taxRatePercentage?: number | undefined;
 }
 
 export interface CreateInvoiceResponseDto {

@@ -64,3 +64,13 @@ export class StreamPublishingError extends InfrastructureError {
     );
   }
 }
+
+export class StorageOperationError extends InfrastructureError {
+  public readonly code = "STORAGE_OPERATION_FAILED";
+  constructor(operation: string, originalError?: unknown) {
+    super(
+      `Fallo técnico en operación de almacenamiento: "${operation}".`,
+      originalError,
+    );
+  }
+}
