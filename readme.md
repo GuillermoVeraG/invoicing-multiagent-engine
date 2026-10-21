@@ -96,7 +96,7 @@ invoicing-service/
 1. Clonar el repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/invoicing-service.git
+git clone https://github.com/GuillermoVeraG/invoicing-service.git
 cd invoicing-service
 
 ```
