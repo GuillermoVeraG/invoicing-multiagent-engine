@@ -39,3 +39,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# LocalStack & Containers Data
+.localstack/
